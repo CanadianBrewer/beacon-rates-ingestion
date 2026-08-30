@@ -1,0 +1,1 @@
+gcloud run deploy beacon-rate-ingestion --region us-central1 --source .
