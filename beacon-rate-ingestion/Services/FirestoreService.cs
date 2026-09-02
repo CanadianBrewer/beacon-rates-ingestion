@@ -193,6 +193,45 @@ public class FirestoreService : IFirestoreService
             "Wrote {DocumentCount} documents to the product-rate collection",
             documentsWritten);
     }
+    
+    public async Task PersistRatesAsync(
+        List<ProductRate> rates,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(rates);
+
+        if (rates.Count == 0)
+        {
+            return;
+        }
+
+        long documentsWritten = 0;
+        CollectionReference collection = _db.Collection("product-rate");
+
+        await Parallel.ForEachAsync(
+            rates.Chunk(_maximumBatchSize),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = 8,
+                CancellationToken = cancellationToken
+            },
+            async (rateBatch, ct) =>
+            {
+                WriteBatch batch = _db.StartBatch();
+
+                foreach (ProductRate rate in rateBatch)
+                {
+                    batch.Set(collection.Document(rate.Id), rate);
+                }
+
+                await CommitBatchWithRetryAsync(batch, ct);
+                Interlocked.Add(ref documentsWritten, rateBatch.Length);
+            });
+
+        _logger.LogDebug(
+            "Wrote {DocumentCount} documents to the product-rate collection",
+            documentsWritten);
+    }
 
     /// <inheritdoc />
     public async Task SetAnnuityRatesLastUpdatedOnAsync(string productId)

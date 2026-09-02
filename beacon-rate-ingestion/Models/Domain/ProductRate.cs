@@ -11,6 +11,9 @@ public class ProductRate
     [FirestoreProperty("productId")]
     public string ProductId { get; set; } = string.Empty;
 
+    [FirestoreProperty("ddwGroupId")]
+    public string DdwGroupId { get; set; } = string.Empty;
+
     [FirestoreProperty("categoryId")]
     public string CategoryId { get; set; } = string.Empty;
 
@@ -40,21 +43,21 @@ public class ProductRate
 
     [FirestoreProperty("isClosed")]
     public bool IsClosed { get; set; }
-    
+
     [FirestoreProperty("isVisible")]
     public bool IsVisible { get; set; }
-    
+
     [FirestoreProperty("isProprietary")]
     public bool IsProprietary { get; set; }
 
     [FirestoreProperty("isRop")]
     public bool IsRop { get; set; }
-    
+
     [FirestoreProperty("isScorecardEligible")]
     public bool IsScorecardEligible { get; set; }
 
     [FirestoreProperty("premium")]
-    public PremiumRange? Premium { get; set; }
+    public PremiumRange Premium { get; set; } = new();
 
     [FirestoreProperty("stateAvailability")]
     public List<string>? StateAvailability { get; set; }
@@ -93,7 +96,7 @@ public class ProductRate
     public BonusRate? Bonus { get; set; }
 
     [FirestoreProperty("terms")]
-    public Dictionary<string, object?>? Terms { get; set; }
+    public Terms Terms { get; set; }
 
     [FirestoreProperty("source")]
     public string? Source { get; set; }
@@ -103,9 +106,10 @@ public class ProductRate
 
     [FirestoreProperty("symbol")]
     public string? Symbol { get; set; }
-    
 
-    
+    public int? VarId { get; set; }
+}
+
     [FirestoreData]
     public class PremiumRange
     {
@@ -180,4 +184,18 @@ public class ProductRate
         [FirestoreProperty("type")]
         public string? Type { get; set; }
     }
-}
+
+    [FirestoreData]
+    public class Terms
+    {
+        public string? ProductType { get; set;}
+        public string? InterestType { get; set;}
+        public bool? Mva { get; set;}
+        public bool? Rop { get; set;}
+        public string? Qualifier { get; set;}
+        public double? BailoutRate { get; set;}
+        public DateTime? SurrenderExpirationDate { get; set;}
+        public int? SurrenderId { get; set;}
+        public DateTime? SurrenderIncreaseDate { get; set;}
+        public double? SurrenderYear { get; set;}
+    }

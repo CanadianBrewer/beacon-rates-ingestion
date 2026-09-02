@@ -23,6 +23,10 @@ mono_crash.*
 # Rider files 
 .idea/
 
+# Binaries
+bin/
+obj/
+
 # nLog files
 internal.txt
 

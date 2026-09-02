@@ -15,35 +15,36 @@ public static class BeaconFixedRateMapper
             EndDate = source.EndDate,
             Premium = CreatePremium(source),
             StateAvailability = source.OverallStateAvailability,
+            VarId = source.VarId,
             Term = CreateTerm(source),
             Rate = CreateRate(source),
             Bonus = CreateBonus(source),
-            Terms = CreateTerms(source)
+            Terms = PopulateTerms(source)
         };
     }
 
-    private static ProductRate.PremiumRange? CreatePremium(BeaconFixedRate source)
+    private static PremiumRange? CreatePremium(BeaconFixedRate source)
     {
         if (source.Minimum is null && source.Maximum is null)
         {
             return null;
         }
 
-        return new ProductRate.PremiumRange
+        return new PremiumRange
         {
             Minimum = source.Minimum,
             Maximum = source.Maximum
         };
     }
 
-    private static ProductRate.RateTerm? CreateTerm(BeaconFixedRate source)
+    private static RateTerm? CreateTerm(BeaconFixedRate source)
     {
         if (source.Intrateter is null && source.TermBeginDate is null && source.TermEndDate is null)
         {
             return null;
         }
 
-        return new ProductRate.RateTerm
+        return new RateTerm
         {
             Value = source.Intrateter,
             StartDate = source.TermBeginDate,
@@ -51,14 +52,14 @@ public static class BeaconFixedRateMapper
         };
     }
 
-    private static ProductRate.RateValue? CreateRate(BeaconFixedRate source)
+    private static RateValue? CreateRate(BeaconFixedRate source)
     {
         if (source.InitRate is null && source.MinEffRate is null && source.MinGrate is null)
         {
             return null;
         }
 
-        return new ProductRate.RateValue
+        return new RateValue
         {
             Value = source.InitRate,
             Minimum = source.MinEffRate,
@@ -66,14 +67,14 @@ public static class BeaconFixedRateMapper
         };
     }
 
-    private static ProductRate.BonusRate? CreateBonus(BeaconFixedRate source)
+    private static BonusRate? CreateBonus(BeaconFixedRate source)
     {
         if (source.BonusPct is null)
         {
             return null;
         }
 
-        return new ProductRate.BonusRate
+        return new BonusRate
         {
             Value = source.BonusPct.Value,
             Term = source.BonusLen,
@@ -81,17 +82,20 @@ public static class BeaconFixedRateMapper
         };
     }
 
-    private static Dictionary<string, object?> CreateTerms(BeaconFixedRate source) => new()
+    private static Terms PopulateTerms(BeaconFixedRate source)
     {
-        ["productType"] = source.ProdType,
-        ["interestType"] = source.IntType,
-        ["mva"] = source.Mva,
-        ["rop"] = source.Rop,
-        ["qualifier"] = source.Qualifier,
-        ["bailoutRate"] = source.BailOutRate,
-        ["surrenderExpirationDate"] = source.SurrExpDate,
-        ["surrenderId"] = source.SurrId,
-        ["surrenderIncreaseDate"] = source.SurrIncDate,
-        ["surrenderYear"] = source.SurrYr
-    };
+        return new Terms()
+        {
+            ProductType = source.ProdType,
+            InterestType = source.IntType,
+            Mva = source.Mva,
+            Rop = source.Rop,
+            Qualifier = source.Qualifier,
+            BailoutRate = source.BailOutRate,
+            SurrenderExpirationDate = source.SurrExpDate,
+            SurrenderId = source.SurrId,
+            SurrenderIncreaseDate = source.SurrIncDate,
+            SurrenderYear = source.SurrYr
+        };
+    }
 }

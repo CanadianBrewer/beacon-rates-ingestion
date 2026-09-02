@@ -57,6 +57,13 @@ public interface IFirestoreService
     Task PersistRatesAsync<T>(List<T> rates, CancellationToken cancellationToken = default) where T : AnnuityBaseRate;
 
     /// <summary>
+    ///     Writes product-rate documents in parallel using Firestore batches.
+    /// </summary>
+    /// <param name="rates">The rate objects to write.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    Task PersistRatesAsync(List<ProductRate> rates, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     ///     Update the annuity with the last updated on date.
     /// </summary>
     /// <param name="productId">The annuity product id, prefixed with one of: fa, ia, iva, or va</param>
