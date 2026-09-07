@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using BeaconDataIngestion.Models.DataModels.DDW.Rates;
 using DueDiligenceWorks.Beacon.RateIngestion.Models.Application;
 using Microsoft.Extensions.Options;
@@ -23,9 +23,9 @@ public class BeaconRatesApiService(
         logger.LogInformation("Rate processing started");
         // await GetFixedRates();
         await GetFixedRatesV2();
-        await GetIndexedRates();
-        await GetRilaRates();
-        await firestoreService.UpdateRatesLastUpdatedOnAsync();
+        //await GetIndexedRates();
+        //await GetRilaRates();
+        //await firestoreService.UpdateRatesLastUpdatedOnAsync();
         logger.LogInformation("Rate processing completed");
     }
 
@@ -74,9 +74,10 @@ public class BeaconRatesApiService(
 
     public async Task GetFixedRatesV2()
     {
-        List<ProductRate> fixedAnnuityRates = await GetRatesFromBeaconAsyncV2("fa");
-        fixedAnnuityRates = [ .. fixedAnnuityRates.Where(z => z.ProductId == "fa_619")];
-        
+        List<BeaconGenericRate> beaconAnnuityRates = await GetRatesFromBeaconAsyncV2("fa");
+        beaconAnnuityRates = [.. beaconAnnuityRates.Where(z => z.ProductId == 1002)];
+        List<ProductRate> fixedAnnuityRates = PopulateFixedRates(beaconAnnuityRates);
+
         fixedAnnuityRates = RemoveFutureDatedRates(fixedAnnuityRates);
         List<string> productIds = [.. fixedAnnuityRates.Select(z => z.ProductId).Distinct()];
         List<string> inactiveProductIds = await firestoreService.GetInactiveProductIdsAsync("fixed");
@@ -198,6 +199,99 @@ public class BeaconRatesApiService(
         });
     }
 
+    private List<ProductRate> PopulateFixedRates(List<BeaconGenericRate> genericRates)
+    {
+        List<ProductRate> retVal = [];
+        foreach (BeaconGenericRate genericRate in genericRates)
+        {
+            // guards
+            if (string.IsNullOrEmpty(genericRate.BeginDate))
+            {
+                logger.LogWarning("Skipping fixed rate for product {ProductId} with urn {Urn} as it has no rate begin date", genericRate.ProductId, genericRate.Urn);
+                continue;
+            }
+
+            retVal.Add(new ProductRate()
+            {
+                Id = genericRate.Urn,
+                ProductId = $"fa_{genericRate.ProductId}",
+                CategoryId = "fixed",
+                StartDate = DateTime.ParseExact(
+                    genericRate.BeginDate,
+                    "yyyy-MM-dd'T'HH:mm:ss",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                EndDate = string.IsNullOrWhiteSpace(genericRate.EndDate)
+                    ? null
+                    : DateTime.ParseExact(
+                        genericRate.EndDate,
+                        "yyyy-MM-dd'T'HH:mm:ss",
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                Premium = new PremiumRange { Minimum = genericRate.MinimumContribution },
+                States = string.IsNullOrWhiteSpace(genericRate.OverallStateAvailability) ? [] : [.. genericRate.OverallStateAvailability.Split(',')],
+                Term = new RateTerm
+                {
+                    Value = genericRate.Intrateter,
+                    StartDate = string.IsNullOrWhiteSpace(genericRate.TermBeginDate)
+                        ? null
+                        : DateTime.ParseExact(
+                            genericRate.TermBeginDate,
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                    EndDate = string.IsNullOrWhiteSpace(genericRate.TermEndDate)
+                        ? null
+                        : DateTime.ParseExact(
+                            genericRate.TermEndDate,
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                },
+                Rate = new RateValue()
+                {
+                    Value = genericRate.InitialRate,
+                    Minimum = genericRate.MinimumEffectiveRate,
+                    Guaranteed = genericRate.MinimumGuaranteedRate
+                },
+                Bonus = new BonusRate()
+                {
+                    Value = genericRate.BonusPercent,
+                    Term = genericRate.BonusLen,
+                    Type = genericRate.BonusType
+                },
+                Terms = new Terms()
+                {
+                    ProductType = genericRate.ProductType,
+                    InterestType = genericRate.InterestType,
+                    Mva = genericRate.Mva,
+                    Rop = genericRate.Rop,
+                    Qualifier = genericRate.Qualifier,
+                    BailoutRate = genericRate.BailoutRate,
+                    SurrenderExpirationDate = string.IsNullOrWhiteSpace(genericRate.SurrenderExpirationDate)
+                        ? null
+                        : DateTime.ParseExact(
+                            genericRate.SurrenderExpirationDate,
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                    SurrenderId = genericRate.SurrenderId,
+                    SurrenderIncreaseDate = string.IsNullOrWhiteSpace(genericRate.SurrenderIncreaseDate)
+                        ? null
+                        : DateTime.ParseExact(
+                            genericRate.SurrenderIncreaseDate,
+                            "yyyy-MM-dd'T'HH:mm:ss",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+                    SurrenderYear = genericRate.SurrenderYear
+                },
+                VarId = genericRate.VarId
+            });
+        }
+
+        return retVal;
+    }
+
     private async Task<List<T>> GetRatesFromBeaconAsync<T>(string rateType) where T : AnnuityBaseRate
     {
         var url = $@"{_apiConfig.Url}/api/DDW_{rateType}/DDW_{rateType}_Rates";
@@ -254,7 +348,7 @@ public class BeaconRatesApiService(
         throw new BeaconException($"Beacon API call returned {httpResponseMessage.StatusCode}");
     }
 
-    private async Task<List<ProductRate>> GetRatesFromBeaconAsyncV2(string rateType)
+    private async Task<List<BeaconGenericRate>> GetRatesFromBeaconAsyncV2(string rateType)
     {
         var url = $@"{_apiConfig.Url}/api/DDW_{rateType}/DDW_{rateType}_Rates";
         var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, url)
@@ -288,17 +382,19 @@ public class BeaconRatesApiService(
 
         if (httpResponseMessage.IsSuccessStatusCode)
         {
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = new DefaultJsonTypeInfoResolver
+                {
+                    Modifiers = { AddAliasesModifier }
+                }
+            };
+            
             string json = await httpResponseMessage.Content.ReadAsStringAsync();
             try
             {
-                var beaconRates = JsonSerializer.Deserialize<List<BeaconFixedRate>>(json);
-                List<ProductRate> rates = [];
-                foreach (BeaconFixedRate beaconRate in beaconRates)
-                {
-                    rates.Add(BeaconFixedRateMapper.ToProductRate(beaconRate));
-                }
-
-                return rates!;
+                List<BeaconGenericRate> beaconRates = JsonSerializer.Deserialize<List<BeaconGenericRate>>(json, options) ?? [];
+                return [.. beaconRates];
             }
             catch (Exception ex)
             {
@@ -365,12 +461,13 @@ public class BeaconRatesApiService(
 
             foreach (int surrenderId in surrenderIds)
             {
-                List<ProductRate> ratesGroupedBySurrenderId = [
+                List<ProductRate> ratesGroupedBySurrenderId =
+                [
                     .. ratesGroupedByVarId
                         .Where(z => z.Terms.SurrenderId == surrenderId)
                         .OrderBy(z => z.Premium.Minimum)
                 ];
-                
+
                 for (var i = 0; i < ratesGroupedBySurrenderId.Count - 1; i++)
                 {
                     if (ratesGroupedBySurrenderId[i].Premium.Minimum is null)
@@ -382,9 +479,9 @@ public class BeaconRatesApiService(
                     long premiumMinimum = 0;
                     if (ratesGroupedBySurrenderId[i].Premium.Minimum.HasValue)
                     {
-                        premiumMinimum = (long) ratesGroupedBySurrenderId[i].Premium.Minimum!.Value;
+                        premiumMinimum = (long)ratesGroupedBySurrenderId[i].Premium.Minimum!.Value;
                     }
-                    
+
                     if (minMaxContributionPairs.TryGetValue(premiumMinimum, out long pairMaximum))
                     {
                         ratesGroupedBySurrenderId[i].Premium.Minimum = premiumMinimum;
@@ -721,5 +818,37 @@ public class BeaconRatesApiService(
 
         double largestMagnitude = Math.Max(Math.Abs(left), Math.Abs(right));
         return difference <= largestMagnitude * relativeTolerance;
+    }
+    
+    private void AddAliasesModifier(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object) return;
+
+        // Create a temporary list to prevent modifying the collection while iterating
+        var propertiesToCreate = new List<(string Alias, JsonPropertyInfo Original)>();
+
+        foreach (var property in typeInfo.Properties)
+        {
+            // Extract custom alias attributes belonging to the property's underlying member info
+            var attributes = property.AttributeProvider?
+                .GetCustomAttributes(typeof(JsonAliasAttribute), inherit: true);
+
+            if (attributes == null) continue;
+
+            foreach (JsonAliasAttribute attr in attributes)
+            {
+                propertiesToCreate.Add((attr.Name, property));
+            }
+        }
+
+        foreach (var (alias, originalProperty) in propertiesToCreate)
+        {
+            // Create an alternate property configuration pointing to the same underlying property logic
+            var aliasProperty = typeInfo.CreateJsonPropertyInfo(originalProperty.PropertyType, alias);
+            aliasProperty.Get = originalProperty.Get;
+            aliasProperty.Set = originalProperty.Set;
+        
+            typeInfo.Properties.Add(aliasProperty);
+        }
     }
 }

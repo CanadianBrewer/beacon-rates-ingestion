@@ -59,8 +59,8 @@ public class ProductRate
     [FirestoreProperty("premium")]
     public PremiumRange Premium { get; set; } = new();
 
-    [FirestoreProperty("stateAvailability")]
-    public List<string>? StateAvailability { get; set; }
+    [FirestoreProperty("states")]
+    public List<string>? States { get; set; } = [];
 
     [FirestoreProperty("term")]
     public RateTerm? Term { get; set; }
@@ -176,7 +176,7 @@ public class ProductRate
     public class BonusRate
     {
         [FirestoreProperty("value")]
-        public double Value { get; set; }
+        public double? Value { get; set; }
 
         [FirestoreProperty("term")]
         public double? Term { get; set; }
@@ -188,14 +188,33 @@ public class ProductRate
     [FirestoreData]
     public class Terms
     {
+        [FirestoreProperty("productType")]
         public string? ProductType { get; set;}
+        
+        [FirestoreProperty("interestType")]
         public string? InterestType { get; set;}
+        
+        [FirestoreProperty("mva")]
         public bool? Mva { get; set;}
+        
+        [FirestoreProperty("rop")]
         public bool? Rop { get; set;}
+        
+        [FirestoreProperty("qualifier")]
         public string? Qualifier { get; set;}
+        
+        [FirestoreProperty("bailoutRate")]
         public double? BailoutRate { get; set;}
+        
+        [FirestoreProperty("surrenderExpirationDate")]
         public DateTime? SurrenderExpirationDate { get; set;}
+        
+        [FirestoreProperty("surrenderId")]
         public int? SurrenderId { get; set;}
+        
+        [FirestoreProperty("surrenderIncreaseDate")]
         public DateTime? SurrenderIncreaseDate { get; set;}
+        
+        [FirestoreProperty("surrenderYear")]
         public double? SurrenderYear { get; set;}
     }

@@ -14,7 +14,7 @@ public static class BeaconFixedRateMapper
             StartDate = source.BeginDate,
             EndDate = source.EndDate,
             Premium = CreatePremium(source),
-            StateAvailability = source.OverallStateAvailability,
+            States = source.OverallStateAvailability,
             VarId = source.VarId,
             Term = CreateTerm(source),
             Rate = CreateRate(source),
