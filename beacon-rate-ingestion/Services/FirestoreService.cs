@@ -9,7 +9,7 @@ namespace DueDiligenceWorks.Beacon.RateIngestion.Services;
 
 public class FirestoreService : IFirestoreService
 {
-    private const string _collectionName = "product-rates-beta";
+    private const string _collectionName = "product-rate";
     private const int _maximumBatchSize = 500;
     private readonly FirestoreDb _db;
     private readonly ILogger<FirestoreService> _logger;
