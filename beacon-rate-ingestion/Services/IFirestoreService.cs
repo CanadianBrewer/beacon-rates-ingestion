@@ -70,11 +70,11 @@ public interface IFirestoreService
     Task SetAnnuityRatesLastUpdatedOnAsync(string productId);
 
     /// <summary>
-    ///     Get all the rates for a given annuity category
+    ///     Get all the rate ids for a given annuity category
     /// </summary>
     /// <param name="categoryId">One of fixed, indexed, rila</param>
-    /// <returns>A list of annuity rates</returns>
-    Task<List<T>> GetAllAnnuitiesRatesAsync<T>(string categoryId);
+    /// <returns>A list of annuity rate ids</returns>
+    Task<List<string>> GetAllAnnuityRateIdsAsync(string categoryId);
 
     /// <summary>
     ///     Update the product-type table 'annuity' document with the current date
@@ -85,4 +85,24 @@ public interface IFirestoreService
     ///     Test if the Firestore db is accessible
     /// </summary>
     Task<bool> CheckFirestoreConnectivityAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all the active market indices 
+    /// </summary>
+    Task<List<MarketIndex>> GetMarketIndicesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Create a new market index
+    /// </summary>
+    Task<MarketIndex> CreateMarketIndexAsync(MarketIndex index, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all the active crediting methods
+    /// </summary>
+    Task<List<CreditingMethod>> GetCreditingMethodsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Create a new crediting method
+    /// </summary>
+    Task<CreditingMethod> CreateCreditingMethodAsync(CreditingMethod method, CancellationToken cancellationToken = default);
 }

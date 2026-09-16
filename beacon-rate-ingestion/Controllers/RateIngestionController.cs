@@ -19,7 +19,7 @@ public class RateIngestionController(IBeaconRatesApiService service): Controller
     [Route("fixed")]
     public async Task<IActionResult> GetFixedRates()
     {
-        await service.GetFixedRatesV2();
+        await service.GetFixedRates();
         return Ok();
     }
 

@@ -4,9 +4,7 @@ public interface IBeaconRatesApiService
 {
     Task GetAllRates();
     
-    // Task GetFixedRates();
-    
-    Task GetFixedRatesV2();
+    Task GetFixedRates();
     
     Task GetIndexedRates();
     

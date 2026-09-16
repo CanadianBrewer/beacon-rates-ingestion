@@ -47,6 +47,10 @@ public class BeaconGenericRate
     [JsonPropertyName("creditStrategy")]
     public string? CreditStrategy { get; set; }
 
+    // indexed
+    [JsonPropertyName("strategyName")]
+    public string? StrategyName  { get; set; }
+    
     // indexed, rila
     [JsonPropertyName("creditingFrequency")]
     public string? CreditingFrequency { get; set; }
@@ -81,11 +85,11 @@ public class BeaconGenericRate
     public string? GmirCode2 { get; set; }
 
     // indexed
-    [JsonPropertyName("gmirStateAvailability1")]
+    [JsonPropertyName("gmirstateAvailability1")]
     public string? GmirStateAvailability1 { get; set; }
 
     // indexed
-    [JsonPropertyName("gmirStateAvailability2")]
+    [JsonPropertyName("gmirstateAvailability2")]
     public string? GmirStateAvailability2 { get; set; }
 
     // indexed, rila
@@ -117,10 +121,16 @@ public class BeaconGenericRate
     public double? MinimumEffectiveRate { get; set; }
 
     // indexed, rila
+    /// <summary>
+    /// This is similar to MinimumCon below but it comes as an integer from Beacon
+    /// </summary>
     [JsonPropertyName("minimum")]
     public int? Minimum { get; set; }
 
     // fixed
+    /// <summary>
+    /// This is similar to Minimum above but it comes as a double from Beacon
+    /// </summary>
     [JsonPropertyName("minimumCon")]
     public double? MinimumContribution { get; set; }
 
@@ -149,8 +159,8 @@ public class BeaconGenericRate
     [JsonPropertyName("mva")]
     public bool? Mva { get; set; }
 
-    // indexed
-    [JsonPropertyName("overallStateAvailability")] // indexed
+    // fixed, indexed, rila 
+    [JsonPropertyName("overallStateAvailability")] // indexed, rila
     [JsonAlias("mgirStates")] // fixed
     public string? OverallStateAvailability { get; set; }
 
