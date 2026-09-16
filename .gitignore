@@ -22,6 +22,11 @@ mono_crash.*
 
 # Rider files 
 .idea/
+*.info
+
+# Binaries
+bin/
+obj/
 
 # nLog files
 internal.txt
@@ -410,3 +415,4 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+

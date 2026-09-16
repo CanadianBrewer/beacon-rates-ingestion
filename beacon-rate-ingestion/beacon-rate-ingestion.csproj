@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>DueDiligenceWorks.Beacon.RateIngestion</RootNamespace>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup>

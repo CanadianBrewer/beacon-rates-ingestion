@@ -9,10 +9,13 @@ namespace DueDiligenceWorks.Beacon.RateIngestion.Services;
 
 public class FirestoreService : IFirestoreService
 {
+    private const string _collectionName = "product-rates-beta";
     private const int _maximumBatchSize = 500;
     private readonly FirestoreDb _db;
     private readonly ILogger<FirestoreService> _logger;
-
+    
+    
+    
     public FirestoreService(ILogger<FirestoreService> logger, FirestoreConfig config)
     {
         _logger = logger;
@@ -96,7 +99,7 @@ public class FirestoreService : IFirestoreService
         }
 
         long documentsDeleted = 0;
-        CollectionReference rates = _db.Collection("product-rate");
+        CollectionReference rates = _db.Collection(_collectionName);
         using var commitLimiter = new SemaphoreSlim(8);
 
         await Parallel.ForEachAsync(
@@ -167,7 +170,7 @@ public class FirestoreService : IFirestoreService
         }
 
         long documentsWritten = 0;
-        CollectionReference collection = _db.Collection("product-rate");
+        CollectionReference collection = _db.Collection(_collectionName);
 
         await Parallel.ForEachAsync(
             rates.Chunk(_maximumBatchSize),
@@ -193,10 +196,54 @@ public class FirestoreService : IFirestoreService
             "Wrote {DocumentCount} documents to the product-rate collection",
             documentsWritten);
     }
+    
+    public async Task PersistRatesAsync(
+        List<ProductRate> rates,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(rates);
+
+        if (rates.Count == 0)
+        {
+            return;
+        }
+
+        long documentsWritten = 0;
+        CollectionReference collection = _db.Collection(_collectionName);
+
+        await Parallel.ForEachAsync(
+            rates.Chunk(_maximumBatchSize),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = 8,
+                CancellationToken = cancellationToken
+            },
+            async (rateBatch, ct) =>
+            {
+                WriteBatch batch = _db.StartBatch();
+
+                foreach (ProductRate rate in rateBatch)
+                {
+                    batch.Set(collection.Document(rate.Id), rate);
+                }
+
+                await CommitBatchWithRetryAsync(batch, ct);
+                Interlocked.Add(ref documentsWritten, rateBatch.Length);
+            });
+
+        _logger.LogDebug(
+            "Wrote {DocumentCount} documents to the product-rate collection",
+            documentsWritten);
+    }
 
     /// <inheritdoc />
     public async Task SetAnnuityRatesLastUpdatedOnAsync(string productId)
     {
+        if (_collectionName.Contains("-beta"))
+        {
+            return;
+        }
+        
         DocumentReference? docReference = _db.Collection("annuities").Document(productId);
         DocumentSnapshot? doc = await docReference.GetSnapshotAsync();
 
@@ -208,20 +255,19 @@ public class FirestoreService : IFirestoreService
     }
 
     /// <inheritdoc />
-    public async Task<List<T>> GetAllAnnuitiesRatesAsync<T>(string categoryId)
+    public async Task<List<string>> GetAllAnnuityRateIdsAsync(string categoryId)
     {
-        CollectionReference? snapshot = _db.Collection("product-rate");
+        CollectionReference? snapshot = _db.Collection(_collectionName);
         Query? query = snapshot.WhereEqualTo("categoryId", categoryId);
         QuerySnapshot? querySnapshot = await query.GetSnapshotAsync();
 
-        List<T> annuitiesRates = [];
+        List<string> annuityIds = [];
         foreach (DocumentSnapshot? doc in querySnapshot.Documents)
         {
-            var annuityRate = doc.ConvertTo<T>();
-            annuitiesRates.Add(annuityRate);
+            annuityIds.Add(doc.Id);
         }
 
-        return annuitiesRates;
+        return annuityIds;
     }
 
     /// <inheritdoc />
@@ -250,6 +296,43 @@ public class FirestoreService : IFirestoreService
         await docReference.UpdateAsync(updatedData);
     }
 
+    public async Task<List<CreditingMethod>> GetCreditingMethodsAsync(CancellationToken cancellationToken = default)
+    {
+        List<CreditingMethod> retVal = [];
+        QuerySnapshot? snapshot = await _db.Collection("crediting-method").WhereEqualTo("isActive", true).GetSnapshotAsync(cancellationToken);
+        foreach (DocumentSnapshot? doc in snapshot.Documents)
+        {
+            retVal.Add(doc.ConvertTo<CreditingMethod>());
+        }
+
+        return retVal;
+    }
+    
+    public async Task<List<MarketIndex>> GetMarketIndicesAsync(CancellationToken cancellationToken = default)
+    {
+        List<MarketIndex> retVal = [];
+        QuerySnapshot? snapshot = await _db.Collection("market-index").WhereEqualTo("isActive", true).GetSnapshotAsync(cancellationToken);
+        foreach (DocumentSnapshot? doc in snapshot.Documents)
+        {
+            retVal.Add(doc.ConvertTo<MarketIndex>());
+        }
+
+        return retVal;
+    }
+    
+    public async Task<MarketIndex> CreateMarketIndexAsync(MarketIndex marketIndex, CancellationToken cancellationToken = default)
+    {
+         DocumentReference docRef = await _db.Collection("market-index").AddAsync(marketIndex, cancellationToken: cancellationToken);
+         marketIndex.Id = docRef.Id;
+         return marketIndex;
+    }
+    
+    public async Task<CreditingMethod> CreateCreditingMethodAsync(CreditingMethod method, CancellationToken cancellationToken = default)
+    {
+        DocumentReference docRef = await _db.Collection("crediting-method").AddAsync(method, cancellationToken: cancellationToken);
+        method.Id = docRef.Id;
+        return method;
+    }
 
     private async Task DeleteCollectionRecursivelyAsync(
         CollectionReference collection,

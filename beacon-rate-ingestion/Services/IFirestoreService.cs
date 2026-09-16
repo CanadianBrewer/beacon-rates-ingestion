@@ -57,17 +57,24 @@ public interface IFirestoreService
     Task PersistRatesAsync<T>(List<T> rates, CancellationToken cancellationToken = default) where T : AnnuityBaseRate;
 
     /// <summary>
+    ///     Writes product-rate documents in parallel using Firestore batches.
+    /// </summary>
+    /// <param name="rates">The rate objects to write.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    Task PersistRatesAsync(List<ProductRate> rates, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     ///     Update the annuity with the last updated on date.
     /// </summary>
     /// <param name="productId">The annuity product id, prefixed with one of: fa, ia, iva, or va</param>
     Task SetAnnuityRatesLastUpdatedOnAsync(string productId);
 
     /// <summary>
-    ///     Get all the rates for a given annuity category
+    ///     Get all the rate ids for a given annuity category
     /// </summary>
     /// <param name="categoryId">One of fixed, indexed, rila</param>
-    /// <returns>A list of annuity rates</returns>
-    Task<List<T>> GetAllAnnuitiesRatesAsync<T>(string categoryId);
+    /// <returns>A list of annuity rate ids</returns>
+    Task<List<string>> GetAllAnnuityRateIdsAsync(string categoryId);
 
     /// <summary>
     ///     Update the product-type table 'annuity' document with the current date
@@ -78,4 +85,24 @@ public interface IFirestoreService
     ///     Test if the Firestore db is accessible
     /// </summary>
     Task<bool> CheckFirestoreConnectivityAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all the active market indices 
+    /// </summary>
+    Task<List<MarketIndex>> GetMarketIndicesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Create a new market index
+    /// </summary>
+    Task<MarketIndex> CreateMarketIndexAsync(MarketIndex index, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all the active crediting methods
+    /// </summary>
+    Task<List<CreditingMethod>> GetCreditingMethodsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Create a new crediting method
+    /// </summary>
+    Task<CreditingMethod> CreateCreditingMethodAsync(CreditingMethod method, CancellationToken cancellationToken = default);
 }
