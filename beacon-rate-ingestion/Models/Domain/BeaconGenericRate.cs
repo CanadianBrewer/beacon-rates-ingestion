@@ -197,6 +197,10 @@ public class BeaconGenericRate
     [JsonAlias("productid")] // fixed
     public double ProductId { get; set; }
 
+    // fixed, indexed, rila
+    [JsonPropertyName("productName")]
+    public string ProductName { get; set; } = "unknown-product-name";
+    
     // fixed
     [JsonPropertyName("qualifier")]
     public string? Qualifier { get; set; }

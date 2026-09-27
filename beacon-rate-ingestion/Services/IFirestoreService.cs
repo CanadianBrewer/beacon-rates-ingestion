@@ -105,4 +105,14 @@ public interface IFirestoreService
     ///     Create a new crediting method
     /// </summary>
     Task<CreditingMethod> CreateCreditingMethodAsync(CreditingMethod method, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all annuities of a single type
+    /// </summary>
+    Task<List<Annuity>> GetAnnuitiesForTypeAsync(string annuityType, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get all companies
+    /// </summary>
+    Task<List<Company>> GetCompaniesAsync(CancellationToken cancellationToken = default);
 }

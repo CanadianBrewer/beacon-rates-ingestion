@@ -334,6 +334,30 @@ public class FirestoreService : IFirestoreService
         return method;
     }
 
+    public async Task<List<Annuity>> GetAnnuitiesForTypeAsync(string annuityType, CancellationToken cancellationToken = default)
+    {
+        List<Annuity> retVal = [];
+        QuerySnapshot querySnapshot = await _db.Collection("annuities").WhereEqualTo("categoryId", annuityType).GetSnapshotAsync(cancellationToken);
+        foreach (DocumentSnapshot documentSnapshot in querySnapshot.Documents)
+        {
+            retVal.Add(documentSnapshot.ConvertTo<Annuity>());
+        }
+
+        return retVal;
+    }
+    
+    public async Task<List<Company>> GetCompaniesAsync(CancellationToken cancellationToken = default)
+    {
+        List<Company> retVal = [];
+        QuerySnapshot querySnapshot = await _db.Collection("company").GetSnapshotAsync(cancellationToken);
+        foreach (DocumentSnapshot documentSnapshot in querySnapshot.Documents)
+        {
+            retVal.Add(documentSnapshot.ConvertTo<Company>());
+        }
+
+        return retVal;
+    }
+    
     private async Task DeleteCollectionRecursivelyAsync(
         CollectionReference collection,
         int batchSize,

@@ -18,6 +18,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
     private readonly HttpClient _httpClient;
     private List<MarketIndex> _marketIndices = [];
     private List<CreditingMethod> _creditingMethods = [];
+    private List<Company> _companies = [];
     
     public BeaconRatesApiService(IOptions<BeaconRatesApiConfig> apiConfig,
         ILogger<BeaconRatesApiService> logger,
@@ -50,6 +51,8 @@ public class BeaconRatesApiService : IBeaconRatesApiService
         };
         
         _logger.LogInformation("Rate processing started");
+        _companies = await _firestoreService.GetCompaniesAsync();
+        
         await GetFixedRates();
         await GetIndexedRates();
         await GetRilaRates();
@@ -61,7 +64,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
     {
         await _firestoreService.SetLastActivityDateAsync(DateTime.UtcNow.ToString(CultureInfo.InvariantCulture), "get-fixed-rates");
         List<BeaconGenericRate> beaconAnnuityRates = await GetRatesFromBeaconAsyncV2(ToBeaconRateCode(RateType.Fixed));
-        List<ProductRate> fixedAnnuityRates = PopulateFixedRates(beaconAnnuityRates);
+        List<ProductRate> fixedAnnuityRates = await PopulateFixedRates(beaconAnnuityRates);
 
         fixedAnnuityRates = RemoveFutureDatedRates(fixedAnnuityRates, RateType.Fixed);
         List<string> productIds = [.. fixedAnnuityRates.Select(z => z.ProductId).Distinct()];
@@ -188,9 +191,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
         });
     }
 
-    private List<ProductRate> PopulateFixedRates(List<BeaconGenericRate> genericRates)
+    private async Task<List<ProductRate>> PopulateFixedRates(List<BeaconGenericRate> genericRates)
     {
         List<ProductRate> retVal = [];
+        List<Annuity> annuities = await _firestoreService.GetAnnuitiesForTypeAsync("fixed");
         foreach (BeaconGenericRate genericRate in genericRates)
         {
             // guards
@@ -200,10 +204,34 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 continue;
             }
 
+            string productId = $"fa_{genericRate.ProductId}";
+            Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
+            if (matchingAnnuity is null)
+            {
+                _logger.LogWarning("No matching annuity for product {ProductId}", productId);
+                continue;
+            }
+            
+            Company? matchingCompany = _companies.FirstOrDefault(z => z.CompanyId == matchingAnnuity.CompanyId);
+            if (matchingCompany is null)
+            {
+                _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
+            }
+            
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
-                ProductId = $"fa_{genericRate.ProductId}",
+                ProductId = productId,
+                Product = new Product
+                {
+                    IsActive = matchingAnnuity.IsActive,
+                    IsProprietary = matchingAnnuity.IsProprietary,
+                    IsClosed = matchingAnnuity.IsClosed ?? false, 
+                    IsInScorecard = matchingAnnuity.IsInScorecard ?? matchingAnnuity.IsInScoring ?? false,
+                    Name = matchingAnnuity.Name,
+                    OrganizationTokens = matchingAnnuity.OrganizationTokens
+                },
+                Company = matchingCompany,
                 CategoryId = "fixed",
                 StartDate = DateTime.ParseExact(
                     genericRate.BeginDate,
@@ -239,7 +267,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 },
                 Rate = new RateValue()
                 {
-                    Value = genericRate.InitialRate,
+                    Value = genericRate.InitialRate / 100d,
                     Minimum = genericRate.MinimumEffectiveRate,
                     Guaranteed = genericRate.MinimumGuaranteedRate
                 },
@@ -284,7 +312,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
     private async Task<List<ProductRate>> PopulateIndexedRates(List<BeaconGenericRate> genericRates)
     {
         List<ProductRate> retVal = [];
-        
+        List<Annuity> annuities = await _firestoreService.GetAnnuitiesForTypeAsync("indexed");
         foreach (BeaconGenericRate genericRate in genericRates)
         {
             // guards1
@@ -294,10 +322,34 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 continue;
             }
 
+            string productId = $"ia_{genericRate.ProductId}";
+            Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
+            if (matchingAnnuity is null)
+            {
+                _logger.LogWarning("No matching annuity for product {ProductId}", productId);
+                continue;
+            }
+            
+            Company? matchingCompany = _companies.FirstOrDefault(z => z.CompanyId == matchingAnnuity.CompanyId);
+            if (matchingCompany is null)
+            {
+                _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
+            }
+            
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
                 ProductId = $"ia_{genericRate.ProductId}",
+                Product = new Product
+                {
+                    IsActive = matchingAnnuity.IsActive,
+                    IsProprietary = matchingAnnuity.IsProprietary,
+                    IsClosed = matchingAnnuity.IsClosed ?? false, 
+                    IsInScorecard = matchingAnnuity.IsInScorecard ?? matchingAnnuity.IsInScoring ?? false,
+                    Name = matchingAnnuity.Name,
+                    OrganizationTokens = matchingAnnuity.OrganizationTokens
+                },
+                Company = matchingCompany,
                 CategoryId = "indexed",
                 StartDate = DateTime.ParseExact(
                     genericRate.BeginDate,
@@ -334,31 +386,31 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 },
                 Spread = new RateRange
                 {
-                    Value = genericRate.SpreadRate,
-                    Maximum = genericRate.SpreadMaximum
+                    Value = genericRate.SpreadRate / 100d,
+                    Maximum = genericRate.SpreadMaximum / 100d
                 },
                 Participation = new RateRange
                 {
-                    Value = genericRate.ParticipationRate,
-                    Minimum = genericRate.ParticipationRateMinimum,
-                    Bailout = genericRate.ParticipationRateBailout
+                    Value = genericRate.ParticipationRate / 100d,
+                    Minimum = genericRate.ParticipationRateMinimum / 100d,
+                    Bailout = genericRate.ParticipationRateBailout / 100d
                 },
                 Trigger = new TriggerRate
                 {
-                    Value = genericRate.PerformanceTrigger,
-                    Rate = genericRate.PerformanceTriggerRate,
+                    Value = genericRate.PerformanceTrigger / 100d,
+                    Rate = genericRate.PerformanceTriggerRate / 100d,
                     Bailout = genericRate.PerformanceTriggerMinimumCredit
                 },
                 Terms = new Terms()
                 {
                     TickerSymbol = genericRate.TickerSymbol,
                     Rop = genericRate.Rop,
-                    RebalanceFixedAllocation = genericRate.RebalanceFixedAllocation,
+                    RebalanceFixedAllocation = genericRate.RebalanceFixedAllocation / 100d,
                     RebalanceFixedRate = genericRate.RebalanceFixedRate,
-                    RebalanceIndexAllocation = genericRate.RebalanceIndexAllocation,
+                    RebalanceIndexAllocation = genericRate.RebalanceIndexAllocation / 100d,
                     MinimumGuaranteedRate2 = genericRate.MinimumGuaranteedRate2,
-                    MinimumInitialGuaranteedPercent1 = genericRate.MinimumInitialGuaranteePercent1,
-                    MinimumInitialGuaranteedPercent2 = genericRate.MinimumInitialGuaranteePercent2,
+                    MinimumInitialGuaranteedPercent1 = genericRate.MinimumInitialGuaranteePercent1 / 100d,
+                    MinimumInitialGuaranteedPercent2 = genericRate.MinimumInitialGuaranteePercent2 / 100d,
                     GmirCode1 = genericRate.GmirCode1,
                     GmirCode2 = genericRate.GmirCode2,
                     GmirStateAvailability1 = genericRate.GmirStateAvailability1,
@@ -374,6 +426,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
     private async Task<List<ProductRate>> PopulateRilaRates(List<BeaconGenericRate> genericRates)
     {
         List<ProductRate> retVal = [];
+        List<Annuity> annuities = await _firestoreService.GetAnnuitiesForTypeAsync("rila");
         foreach (BeaconGenericRate genericRate in genericRates)
         {
             // guards
@@ -383,10 +436,34 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 continue;
             }
 
+            string productId = $"iva_{genericRate.ProductId}";
+            Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
+            if (matchingAnnuity is null)
+            {
+                _logger.LogWarning("No matching annuity for product {ProductId}", productId);
+                continue;
+            }
+            
+            Company? matchingCompany = _companies.FirstOrDefault(z => z.CompanyId == matchingAnnuity.CompanyId);
+            if (matchingCompany is null)
+            {
+                _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
+            }
+            
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
-                ProductId = $"ia_{genericRate.ProductId}",
+                ProductId = $"iva_{genericRate.ProductId}",
+                Product = new Product
+                {
+                    IsActive = matchingAnnuity.IsActive,
+                    IsProprietary = matchingAnnuity.IsProprietary,
+                    IsClosed = matchingAnnuity.IsClosed ?? false, 
+                    IsInScorecard = matchingAnnuity.IsInScorecard ?? matchingAnnuity.IsInScoring ?? false,
+                    Name = matchingAnnuity.Name,
+                    OrganizationTokens = matchingAnnuity.OrganizationTokens
+                },
+                Company = matchingCompany,
                 CategoryId = "rila",
                 StartDate = DateTime.ParseExact(
                     genericRate.EffectiveDate,
@@ -404,17 +481,17 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 CreditingMethodId = await GetOrCreateCreditingMethodId(genericRate.StrategyName),
                 Rate = new RateValue()
                 {
-                    Value = genericRate.FixedRate,
-                    Minimum = genericRate.MinimumFixedRate
+                    Value = genericRate.FixedRate / 100d,
+                    Minimum = genericRate.MinimumFixedRate / 100d
                 },
                 Cap = new RateRange
                 {
-                    Value = genericRate.CapRate,
-                    Minimum = genericRate.CapMinimum,
-                    Bailout = genericRate.CapBail
+                    Value = genericRate.CapRate / 100d,
+                    Minimum = genericRate.CapMinimum / 100d,
+                    Bailout = genericRate.CapBail / 100d
                 },
-                Buffer = genericRate.Buffer,
-                Floor = genericRate.Floor,
+                Buffer = genericRate.Buffer / 100d,
+                Floor = genericRate.Floor / 100d,
                 Spread = new RateRange
                 {
                     Value = genericRate.SpreadRate,
@@ -422,15 +499,15 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 },
                 Participation = new RateRange
                 {
-                    Value = genericRate.ParticipationRate,
-                    Minimum = genericRate.ParticipationRateMinimum,
-                    Bailout = genericRate.ParticipationRateBailout
+                    Value = genericRate.ParticipationRate / 100d,
+                    Minimum = genericRate.ParticipationRateMinimum / 100d,
+                    Bailout = genericRate.ParticipationRateBailout / 100d
                 },
                 Trigger = new TriggerRate
                 {
-                    Value = genericRate.PerformanceTrigger,
-                    Rate = genericRate.PerformanceTriggerRate,
-                    Bailout = genericRate.PerformanceTriggerMinimumCredit
+                    Value = genericRate.PerformanceTrigger / 100d,
+                    Rate = genericRate.PerformanceTriggerRate / 100d,
+                    Bailout = genericRate.PerformanceTriggerMinimumCredit / 100d
                 },
                 Terms = new Terms()
                 {

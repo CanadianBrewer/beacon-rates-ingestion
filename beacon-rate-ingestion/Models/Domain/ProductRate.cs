@@ -8,8 +8,8 @@ public class ProductRate
     [FirestoreDocumentId]
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    [FirestoreProperty("productId")]
-    public string ProductId { get; set; } = string.Empty;
+    [FirestoreProperty("company")]
+    public Company? Company { get; set; }
 
     [FirestoreProperty("ddwGroupId")]
     public string DdwGroupId { get; set; } = string.Empty;
@@ -41,26 +41,20 @@ public class ProductRate
     [FirestoreProperty("description")]
     public string? Description { get; set; }
 
-    [FirestoreProperty("isActive")]
-    public bool IsActive { get; set; } = true;
-
-    [FirestoreProperty("isClosed")]
-    public bool IsClosed { get; set; }
-
     [FirestoreProperty("isVisible")]
     public bool IsVisible { get; set; } = true;
-
-    [FirestoreProperty("isProprietary")]
-    public bool IsProprietary { get; set; }
 
     [FirestoreProperty("isRop")]
     public bool IsRop { get; set; }
 
-    [FirestoreProperty("isScorecardEligible")]
-    public bool IsScorecardEligible { get; set; }
-
     [FirestoreProperty("premium")]
     public PremiumRange Premium { get; set; } = new();
+    
+    [FirestoreProperty("product")]
+    public Product Product { get; set; } = new();
+    
+    [FirestoreProperty("productId")]
+    public string ProductId { get; set; } = string.Empty;
 
     [FirestoreProperty("states")]
     public List<string>? States { get; set; } = [];
