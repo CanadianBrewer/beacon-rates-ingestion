@@ -329,7 +329,8 @@ public class FirestoreService : IFirestoreService
     
     public async Task<CreditingMethod> CreateCreditingMethodAsync(CreditingMethod method, CancellationToken cancellationToken = default)
     {
-        DocumentReference docRef = await _db.Collection("crediting-method").AddAsync(method, cancellationToken: cancellationToken);
+        DocumentReference docRef = _db.Collection("crediting-method").Document(method.Id);
+        await docRef.SetAsync(method, cancellationToken: cancellationToken);
         method.Id = docRef.Id;
         return method;
     }

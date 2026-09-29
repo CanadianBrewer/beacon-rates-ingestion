@@ -222,6 +222,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
             {
                 Id = genericRate.Urn,
                 ProductId = productId,
+                ProductName = genericRate.ProductName,
                 Product = new Product
                 {
                     IsActive = matchingAnnuity.IsActive,
@@ -231,8 +232,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                     Name = matchingAnnuity.Name,
                     OrganizationTokens = matchingAnnuity.OrganizationTokens
                 },
-                Company = matchingCompany,
                 CategoryId = "fixed",
+                Company = matchingCompany,
+                CompanyId = matchingCompany?.CompanyId,
+                CompanyName = genericRate.CompanyName,
                 StartDate = DateTime.ParseExact(
                     genericRate.BeginDate,
                     "yyyy-MM-dd'T'HH:mm:ss",
@@ -336,10 +339,14 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
             
+            (string IndexId, string IndexName) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
+            (string CreditingMethodId, string CreditingMethodName) creditingMethod = await GetOrCreateCreditingMethodId(genericRate.StrategyName);
+            
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
                 ProductId = $"ia_{genericRate.ProductId}",
+                ProductName = genericRate.ProductName,
                 Product = new Product
                 {
                     IsActive = matchingAnnuity.IsActive,
@@ -349,8 +356,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                     Name = matchingAnnuity.Name,
                     OrganizationTokens = matchingAnnuity.OrganizationTokens
                 },
-                Company = matchingCompany,
                 CategoryId = "indexed",
+                Company = matchingCompany,
+                CompanyId = matchingCompany?.CompanyId,
+                CompanyName = genericRate.CompanyName,
                 StartDate = DateTime.ParseExact(
                     genericRate.BeginDate,
                     "yyyy-MM-dd'T'HH:mm:ss",
@@ -370,8 +379,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 CreditingFrequency = genericRate.CreditingFrequency,
                 StrategyName = genericRate.StrategyName,
                 StrategyId = string.Empty, // don't know where to get this from Beacon or how to map it from StrategyName
-                MarketIndexId = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol),  
-                CreditingMethodId = await GetOrCreateCreditingMethodId(genericRate.StrategyName),
+                MarketIndexId = marketIndex.IndexId,
+                MarketIndexName = marketIndex.IndexName,
+                CreditingMethodId = creditingMethod.CreditingMethodId,
+                CreditingMethodName = creditingMethod.CreditingMethodName,
                 Rate = new RateValue()
                 {
                     Value = genericRate.FixedRate,
@@ -449,11 +460,15 @@ public class BeaconRatesApiService : IBeaconRatesApiService
             {
                 _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
+
+            (string IndexId, string IndexName) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
+            (string CreditingMethodId, string CreditingMethodName) creditingMethod = await GetOrCreateCreditingMethodId(genericRate.StrategyName);
             
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
                 ProductId = $"iva_{genericRate.ProductId}",
+                ProductName = genericRate.ProductName,
                 Product = new Product
                 {
                     IsActive = matchingAnnuity.IsActive,
@@ -463,8 +478,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                     Name = matchingAnnuity.Name,
                     OrganizationTokens = matchingAnnuity.OrganizationTokens
                 },
-                Company = matchingCompany,
                 CategoryId = "rila",
+                Company = matchingCompany,
+                CompanyId = matchingCompany?.CompanyId,
+                CompanyName = genericRate.CompanyName,
                 StartDate = DateTime.ParseExact(
                     genericRate.EffectiveDate,
                     "MM/dd/yyyy",
@@ -477,8 +494,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 CreditingFrequency = genericRate.CreditingFrequency,
                 StrategyName = genericRate.StrategyName,
                 StrategyId = string.Empty, // don't know where to get this from Beacon or how to map it from StrategyName
-                MarketIndexId = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol),  
-                CreditingMethodId = await GetOrCreateCreditingMethodId(genericRate.StrategyName),
+                MarketIndexId = marketIndex.IndexId,
+                MarketIndexName = marketIndex.IndexName,
+                CreditingMethodId = creditingMethod.CreditingMethodId,
+                CreditingMethodName = creditingMethod.CreditingMethodName,
                 Rate = new RateValue()
                 {
                     Value = genericRate.FixedRate / 100d,
@@ -1051,7 +1070,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
         _ => throw new ArgumentOutOfRangeException(nameof(rateType), rateType, null)
     };
 
-    private async Task<string> GetOrCreateMarketIndexId(string? indexName, string? tickerSymbol)
+    private async Task<(string IndexId, string IndexName)> GetOrCreateMarketIndexId(string? indexName, string? tickerSymbol)
     {
         if (_marketIndices.Count == 0)
         {
@@ -1069,14 +1088,14 @@ public class BeaconRatesApiService : IBeaconRatesApiService
             MarketIndex? matchedIndex = _marketIndices.FirstOrDefault(z => z.Symbol.Equals(tickerSymbol, StringComparison.OrdinalIgnoreCase));
             if (matchedIndex is not null)
             {
-                return matchedIndex.Id;
+                return (matchedIndex.Id, matchedIndex.Name);
             }
         }
 
         // if indexName is null or whitespace, return string.Empty
         if (string.IsNullOrWhiteSpace(indexName))
         {
-            return string.Empty;
+            return (string.Empty, string.Empty);
         }
 
         // keyword match
@@ -1088,7 +1107,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedIndices.Any())
         {
-            return matchedIndices.First().Id;
+            return (matchedIndices.First().Id, matchedIndices.First().Name);
         }
         
         // exact-name fallback
@@ -1099,7 +1118,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedIndices.Any())
         {
-            return matchedIndices.First().Id;
+            return (matchedIndices.First().Id, matchedIndices.First().Name) ;
         }
 
         // auto-create, flagged for review
@@ -1119,10 +1138,10 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         newIndex = await _firestoreService.CreateMarketIndexAsync(newIndex);
         _marketIndices.Add(newIndex);
-        return newIndex.Id;
+        return (newIndex.Id, newIndex.Name);
     }
     
-    private async Task<string> GetOrCreateCreditingMethodId(string? strategyName)
+    private async Task<(string CreditingMethodId, string CreditingMethodName)> GetOrCreateCreditingMethodId(string? strategyName)
     {
         if (_creditingMethods.Count == 0)
         {
@@ -1135,7 +1154,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
         // if indexName is null or whitespace, return string.Empty
         if (string.IsNullOrWhiteSpace(strategyName))
         {
-            return string.Empty;
+            return (string.Empty, string.Empty);
         }
 
         // keyword match
@@ -1147,7 +1166,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedMethods.Any())
         {
-            return matchedMethods.First().Id;
+            return (matchedMethods.First().Id, matchedMethods.First().Name);
         }
         
         // exact-name fallback
@@ -1158,12 +1177,13 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedMethods.Any())
         {
-            return matchedMethods.First().Id;
+            return (matchedMethods.First().Id, matchedMethods.First().Name);
         }
 
         // auto-create, flagged for review
         CreditingMethod newMethod = new()
         {
+            Id = strategyName.ToLower().Replace(" ", "-"),
             Name = strategyName,
             Keywords = [strategyName],
             Description = string.Empty,
@@ -1177,6 +1197,6 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         newMethod = await _firestoreService.CreateCreditingMethodAsync(newMethod);
         _creditingMethods.Add(newMethod);
-        return newMethod.Id;
+        return (newMethod.Id, newMethod.Name);
     }
 }

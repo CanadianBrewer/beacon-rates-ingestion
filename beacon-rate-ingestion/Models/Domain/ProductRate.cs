@@ -11,6 +11,12 @@ public class ProductRate
     [FirestoreProperty("company")]
     public Company? Company { get; set; }
 
+    [FirestoreProperty("companyId")]
+    public string? CompanyId { get; set; }
+
+    [FirestoreProperty("companyName")]
+    public string? CompanyName { get; set; } = string.Empty;
+    
     [FirestoreProperty("ddwGroupId")]
     public string DdwGroupId { get; set; } = string.Empty;
 
@@ -26,9 +32,15 @@ public class ProductRate
     [FirestoreProperty("creditingMethodId")]
     public string? CreditingMethodId { get; set; }
 
+    [FirestoreProperty("creditingMethodName")]
+    public string? CreditingMethodName { get; set; }
+    
     [FirestoreProperty("marketIndexId")]
     public string? MarketIndexId { get; set; }
 
+    [FirestoreProperty("marketIndexName")]
+    public string? MarketIndexName { get; set; }
+    
     [FirestoreProperty("startDate")]
     public DateTime StartDate { get; set; }
 
@@ -41,6 +53,9 @@ public class ProductRate
     [FirestoreProperty("description")]
     public string? Description { get; set; }
 
+    [FirestoreProperty("isActive")]
+    public bool IsActive => true;
+    
     [FirestoreProperty("isVisible")]
     public bool IsVisible { get; set; } = true;
 
@@ -56,6 +71,9 @@ public class ProductRate
     [FirestoreProperty("productId")]
     public string ProductId { get; set; } = string.Empty;
 
+    [FirestoreProperty("productName")]
+    public string ProductName { get; set; } = string.Empty;
+    
     [FirestoreProperty("states")]
     public List<string>? States { get; set; } = [];
     

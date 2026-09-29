@@ -43,6 +43,10 @@ public class BeaconGenericRate
     [JsonPropertyName("capRate")]
     public double? CapRate { get; set; }
 
+    // fixed, indexed, rila
+    [JsonPropertyName("companyName")]
+    public string CompanyName { get; set; } = "unknown-company-name";
+    
     // indexed, rila
     [JsonPropertyName("creditStrategy")]
     public string? CreditStrategy { get; set; }

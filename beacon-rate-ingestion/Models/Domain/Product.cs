@@ -28,8 +28,11 @@ public class Product
 public class Company
 {
     [FirestoreDocumentId]
-    public string CompanyId { get; set; } = string.Empty;
+    private string Id { get; set; } = string.Empty;
     
+    [FirestoreProperty("companyId")]
+    public string CompanyId => Id;
+
     [FirestoreProperty("isActive")]
     public bool IsActive { get; set; }
 
