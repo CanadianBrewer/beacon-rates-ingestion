@@ -339,7 +339,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
             
-            (string IndexId, string IndexName) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
+            (string IndexId, string IndexName, string IndexSymbol) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
             (string CreditingMethodId, string CreditingMethodName) creditingMethod = await GetOrCreateCreditingMethodId(genericRate.StrategyName);
             
             retVal.Add(new ProductRate()
@@ -381,6 +381,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 StrategyId = string.Empty, // don't know where to get this from Beacon or how to map it from StrategyName
                 MarketIndexId = marketIndex.IndexId,
                 MarketIndexName = marketIndex.IndexName,
+                MarketIndexSymbol = marketIndex.IndexSymbol,
                 CreditingMethodId = creditingMethod.CreditingMethodId,
                 CreditingMethodName = creditingMethod.CreditingMethodName,
                 Rate = new RateValue()
@@ -461,7 +462,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
 
-            (string IndexId, string IndexName) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
+            (string IndexId, string IndexName, string IndexSymbol) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
             (string CreditingMethodId, string CreditingMethodName) creditingMethod = await GetOrCreateCreditingMethodId(genericRate.StrategyName);
             
             retVal.Add(new ProductRate()
@@ -496,6 +497,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 StrategyId = string.Empty, // don't know where to get this from Beacon or how to map it from StrategyName
                 MarketIndexId = marketIndex.IndexId,
                 MarketIndexName = marketIndex.IndexName,
+                MarketIndexSymbol = marketIndex.IndexSymbol,
                 CreditingMethodId = creditingMethod.CreditingMethodId,
                 CreditingMethodName = creditingMethod.CreditingMethodName,
                 Rate = new RateValue()
@@ -1070,7 +1072,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
         _ => throw new ArgumentOutOfRangeException(nameof(rateType), rateType, null)
     };
 
-    private async Task<(string IndexId, string IndexName)> GetOrCreateMarketIndexId(string? indexName, string? tickerSymbol)
+    private async Task<(string IndexId, string IndexName, string IndexSymbol)> GetOrCreateMarketIndexId(string? indexName, string? tickerSymbol)
     {
         if (_marketIndices.Count == 0)
         {
@@ -1088,14 +1090,14 @@ public class BeaconRatesApiService : IBeaconRatesApiService
             MarketIndex? matchedIndex = _marketIndices.FirstOrDefault(z => z.Symbol.Equals(tickerSymbol, StringComparison.OrdinalIgnoreCase));
             if (matchedIndex is not null)
             {
-                return (matchedIndex.Id, matchedIndex.Name);
+                return (matchedIndex.Id, matchedIndex.Name, matchedIndex.Symbol);
             }
         }
 
         // if indexName is null or whitespace, return string.Empty
         if (string.IsNullOrWhiteSpace(indexName))
         {
-            return (string.Empty, string.Empty);
+            return (string.Empty, string.Empty, string.Empty);
         }
 
         // keyword match
@@ -1107,7 +1109,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedIndices.Any())
         {
-            return (matchedIndices.First().Id, matchedIndices.First().Name);
+            return (matchedIndices.First().Id, matchedIndices.First().Name, matchedIndices.First().Symbol);
         }
         
         // exact-name fallback
@@ -1118,7 +1120,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         if (matchedIndices.Any())
         {
-            return (matchedIndices.First().Id, matchedIndices.First().Name) ;
+            return (matchedIndices.First().Id, matchedIndices.First().Name, matchedIndices.First().Symbol) ;
         }
 
         // auto-create, flagged for review
@@ -1138,7 +1140,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
         newIndex = await _firestoreService.CreateMarketIndexAsync(newIndex);
         _marketIndices.Add(newIndex);
-        return (newIndex.Id, newIndex.Name);
+        return (newIndex.Id, newIndex.Name, newIndex.Symbol);
     }
     
     private async Task<(string CreditingMethodId, string CreditingMethodName)> GetOrCreateCreditingMethodId(string? strategyName)

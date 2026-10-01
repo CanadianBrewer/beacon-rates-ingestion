@@ -41,6 +41,10 @@ public class ProductRate
     [FirestoreProperty("marketIndexName")]
     public string? MarketIndexName { get; set; }
     
+    // indexed and rila
+    [FirestoreProperty("marketIndexSymbol")]
+    public string? MarketIndexSymbol { get; set; }
+
     [FirestoreProperty("startDate")]
     public DateTime StartDate { get; set; }
 
