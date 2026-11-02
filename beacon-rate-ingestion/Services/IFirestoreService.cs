@@ -115,4 +115,15 @@ public interface IFirestoreService
     ///     Get all companies
     /// </summary>
     Task<List<Company>> GetCompaniesAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    ///     Get ages for annuity
+    /// </summary>
+    Task<List<T>> GetAgesForAnnuityAsync<T>(string productId, CancellationToken cancellationToken = default) where T : AgeBase;
+
+    /// <summary>
+    ///     Get surrendersages for annuity
+    /// </summary>
+    Task<List<Surrender>> GetSurrendersForAnnuityAsync(string productId, CancellationToken cancellationToken = default);
+
 }

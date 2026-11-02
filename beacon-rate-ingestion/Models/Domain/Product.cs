@@ -22,6 +22,94 @@ public class Product
 
     [FirestoreProperty("_organizationTokens")]
     public List<string> OrganizationTokens { get; set; } = [];
+    
+    [FirestoreProperty("eligibiity")]
+    public Eligibility? Eligibility { get; set; }
+}
+
+[FirestoreData]
+public class Eligibility
+{
+    [FirestoreProperty("ages")]
+    public AgeBase? Ages { get; set; }
+    
+    [FirestoreProperty("schedId")]
+    public long? SchedId { get; set; }
+}
+
+[FirestoreData]
+public class FixedAge : AgeBase
+{
+    [FirestoreProperty("maximumAZQ")]
+    public double? MaximumAZQ { get; set; }
+
+    [FirestoreProperty("maximumAZNQ")]
+    public double? MaximumAZNQ { get; set; }
+
+    [FirestoreProperty("descriptionMINAQ")]
+    public string? DescriptionMINAQ { get; set; }
+
+    [FirestoreProperty("descriptionMXAQ")]
+    public string? DescriptionMXAQ { get; set; }
+
+    [FirestoreProperty("descriptionMINANQ")]
+    public string? DescriptionMINANQ { get; set; }
+
+    [FirestoreProperty("descriptionMXANQ")]
+    public string? DescriptionMXANQ { get; set; }
+
+    [FirestoreProperty("descriptionMXAZQ")]
+    public string? DescriptionMXAZQ { get; set; }
+
+    [FirestoreProperty("descriptionMXAZNQ")]
+    public string? DescriptionMXAZNQ { get; set; }
+
+    [FirestoreProperty("descriptionMINOQ")]
+    public string? DescriptionMINOQ { get; set; }
+
+    [FirestoreProperty("descriptionMXOQ")]
+    public string? DescriptionMXOQ { get; set; }
+
+    [FirestoreProperty("descriptionMINONQ")]
+    public string? DescriptionMINONQ { get; set; }
+
+    [FirestoreProperty("descriptionMXONQ")]
+    public string? DescriptionMXONQ { get; set; }
+}
+
+[FirestoreData]
+public class AgeBase
+{
+    [FirestoreProperty("minimumAQ")]
+    public double? MinimumAQ { get; set; }
+
+    [FirestoreProperty("maximumAQ")]
+    public double? MaximumAQ { get; set; }
+
+    [FirestoreProperty("minimumANQ")]
+    public double? MinimumANQ { get; set; }
+
+    [FirestoreProperty("maximumANQ")]
+    public double? MaximumANQ { get; set; }
+
+    [FirestoreProperty("minimumOQ")]
+    public double? MinimumOQ { get; set; }
+
+    [FirestoreProperty("maximumOQ")]
+    public double? MaximumOQ { get; set; }
+
+    [FirestoreProperty("minimumONQ")]
+    public double? MinimumONQ { get; set; }
+
+    [FirestoreProperty("maximumONQ")]
+    public double? MaximumONQ { get; set; }
+}
+
+[FirestoreData]
+public class Surrender
+{
+    [FirestoreProperty("scheduleId")]
+    public long ScheduleId { get; set; }
 }
 
 [FirestoreData]

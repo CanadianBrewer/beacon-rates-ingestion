@@ -31,4 +31,10 @@ public class Annuity
     
     [FirestoreProperty("_organizationTokens")]
     public List<string> OrganizationTokens { get; set; } = [];
+
+    [FirestoreProperty("ages")]
+    public List<FixedAge> Ages { get; set; } = [];
+    
+    [FirestoreProperty("surrenders")]
+    public List<Surrender> Surrenders { get; set; } = [];
 }

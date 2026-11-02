@@ -335,7 +335,7 @@ public class FirestoreService : IFirestoreService
         return method;
     }
 
-    public async Task<List<Annuity>> GetAnnuitiesForTypeAsync(string annuityType, CancellationToken cancellationToken = default)
+    public async Task<List<Annuity>> GetAnnuitiesForTypeAsync(string annuityType, CancellationToken cancellationToken = default) 
     {
         List<Annuity> retVal = [];
         QuerySnapshot querySnapshot = await _db.Collection("annuities").WhereEqualTo("categoryId", annuityType).GetSnapshotAsync(cancellationToken);
@@ -345,6 +345,28 @@ public class FirestoreService : IFirestoreService
         }
 
         return retVal;
+    }
+    
+    public async Task<List<T>> GetAgesForAnnuityAsync<T>(string productId, CancellationToken cancellationToken = default) where T : AgeBase
+    {
+        QuerySnapshot querySnapshot = await _db.Collection("annuities").Document(productId).Collection("ages").GetSnapshotAsync(cancellationToken);
+        if (querySnapshot.Documents.Count > 0)
+        {
+            return [querySnapshot.Documents[0].ConvertTo<T>()];
+        }
+
+        return [];
+    }
+ 
+    public async Task<List<Surrender>> GetSurrendersForAnnuityAsync(string productId, CancellationToken cancellationToken = default)
+    {
+        QuerySnapshot querySnapshot = await _db.Collection("annuities").Document(productId).Collection("surrenders").GetSnapshotAsync(cancellationToken);
+        if (querySnapshot.Documents.Count > 0)
+        {
+            return [querySnapshot.Documents[0].ConvertTo<Surrender>()];
+        }
+
+        return [];
     }
     
     public async Task<List<Company>> GetCompaniesAsync(CancellationToken cancellationToken = default)

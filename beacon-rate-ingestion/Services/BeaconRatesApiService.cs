@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
@@ -19,6 +20,8 @@ public class BeaconRatesApiService : IBeaconRatesApiService
     private List<MarketIndex> _marketIndices = [];
     private List<CreditingMethod> _creditingMethods = [];
     private List<Company> _companies = [];
+    private ConcurrentDictionary<string, AgeBase> _ageBases = [];
+    private ConcurrentDictionary<string, Surrender> _surrenders = [];
     
     public BeaconRatesApiService(IOptions<BeaconRatesApiConfig> apiConfig,
         ILogger<BeaconRatesApiService> logger,
@@ -193,31 +196,52 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
     private async Task<List<ProductRate>> PopulateFixedRates(List<BeaconGenericRate> genericRates)
     {
-        List<ProductRate> retVal = [];
+        ConcurrentBag<ProductRate> retVal = [];
         List<Annuity> annuities = await _firestoreService.GetAnnuitiesForTypeAsync("fixed");
-        foreach (BeaconGenericRate genericRate in genericRates)
+        int counter = 1;
+
+        await Parallel.ForEachAsync(genericRates, _parallelOptions, async (genericRate, ct) =>
         {
             // guards
             if (string.IsNullOrEmpty(genericRate.BeginDate))
             {
                 _logger.LogWarning("Skipping fixed rate for product {ProductId} with urn {Urn} as it has no rate begin date", genericRate.ProductId, genericRate.Urn);
-                continue;
+                return;
             }
 
+            _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", Interlocked.Increment(ref counter), genericRates.Count, genericRate.ProductId);
             string productId = $"fa_{genericRate.ProductId}";
             Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
             if (matchingAnnuity is null)
             {
                 _logger.LogWarning("No matching annuity for product {ProductId}", productId);
-                continue;
+                return;
             }
-            
+
             Company? matchingCompany = _companies.FirstOrDefault(z => z.CompanyId == matchingAnnuity.CompanyId);
             if (matchingCompany is null)
             {
-                _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
+                // _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
-            
+
+            if (!_ageBases.TryGetValue(productId, out AgeBase? _))
+            {
+                List<FixedAge> matchingAges = await _firestoreService.GetAgesForAnnuityAsync<FixedAge>(productId, ct);
+                _ageBases.TryAdd(productId, matchingAges.FirstOrDefault()!);
+            }
+
+            if (!_surrenders.TryGetValue(productId, out Surrender? _))
+            {
+                List<Surrender> matchingSurrenders = await _firestoreService.GetSurrendersForAnnuityAsync(productId, ct);
+                _surrenders.TryAdd(productId, matchingSurrenders.FirstOrDefault()!);
+            }
+
+            Eligibility eligibility = new()
+            {
+                Ages = _ageBases[productId],
+                SchedId = _surrenders[productId].ScheduleId
+            };
+
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
@@ -227,10 +251,11 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 {
                     IsActive = matchingAnnuity.IsActive,
                     IsProprietary = matchingAnnuity.IsProprietary,
-                    IsClosed = matchingAnnuity.IsClosed ?? false, 
+                    IsClosed = matchingAnnuity.IsClosed ?? false,
                     IsInScorecard = matchingAnnuity.IsInScorecard ?? matchingAnnuity.IsInScoring ?? false,
                     Name = matchingAnnuity.Name,
-                    OrganizationTokens = matchingAnnuity.OrganizationTokens
+                    OrganizationTokens = matchingAnnuity.OrganizationTokens,
+                    Eligibility = eligibility
                 },
                 CategoryId = "fixed",
                 Company = matchingCompany,
@@ -307,41 +332,62 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 },
                 VarId = genericRate.VarId
             });
-        }
+        });
 
-        return retVal;
+        return [.. retVal];
     }
     
     private async Task<List<ProductRate>> PopulateIndexedRates(List<BeaconGenericRate> genericRates)
     {
-        List<ProductRate> retVal = [];
+        ConcurrentBag<ProductRate> retVal = [];
         List<Annuity> annuities = await _firestoreService.GetAnnuitiesForTypeAsync("indexed");
-        foreach (BeaconGenericRate genericRate in genericRates)
+        int counter = 1;
+        
+        await Parallel.ForEachAsync(genericRates, _parallelOptions, async (genericRate, ct) =>
         {
             // guards1
             if (string.IsNullOrEmpty(genericRate.BeginDate))
             {
-                _logger.LogWarning("Skipping fixed rate for product {ProductId} with urn {Urn} as it has no rate begin date", genericRate.ProductId, genericRate.Urn);
-                continue;
+                _logger.LogWarning("Skipping indexed rate for product {ProductId} with urn {Urn} as it has no rate begin date", genericRate.ProductId, genericRate.Urn);
+                return;
             }
 
+            _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", Interlocked.Increment(ref counter), genericRates.Count, genericRate.ProductId);
             string productId = $"ia_{genericRate.ProductId}";
             Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
             if (matchingAnnuity is null)
             {
                 _logger.LogWarning("No matching annuity for product {ProductId}", productId);
-                continue;
+                return;
             }
-            
+
             Company? matchingCompany = _companies.FirstOrDefault(z => z.CompanyId == matchingAnnuity.CompanyId);
             if (matchingCompany is null)
             {
-                _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
+                // _logger.LogWarning("No matching company for annuity {AnnuityId} and companyId {CompanyId}", matchingAnnuity.Id, matchingAnnuity.CompanyId);
             }
+
+            if (!_ageBases.TryGetValue(productId, out AgeBase? _))
+            {
+                List<FixedAge> matchingAges = await _firestoreService.GetAgesForAnnuityAsync<FixedAge>(productId, ct);
+                _ageBases.TryAdd(productId, matchingAges.FirstOrDefault()!);
+            }
+
+            if (!_surrenders.TryGetValue(productId, out Surrender? _))
+            {
+                List<Surrender> matchingSurrenders = await _firestoreService.GetSurrendersForAnnuityAsync(productId, ct);
+                _surrenders.TryAdd(productId, matchingSurrenders.FirstOrDefault()!);
+            }
+
+            Eligibility eligibility = new()
+            {
+                Ages = _ageBases[productId],
+                SchedId = _surrenders[productId]?.ScheduleId
+            };
             
             (string IndexId, string IndexName, string IndexSymbol) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
             (string CreditingMethodId, string CreditingMethodName) creditingMethod = await GetOrCreateCreditingMethodId(genericRate.StrategyName);
-            
+
             retVal.Add(new ProductRate()
             {
                 Id = genericRate.Urn,
@@ -351,10 +397,11 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 {
                     IsActive = matchingAnnuity.IsActive,
                     IsProprietary = matchingAnnuity.IsProprietary,
-                    IsClosed = matchingAnnuity.IsClosed ?? false, 
+                    IsClosed = matchingAnnuity.IsClosed ?? false,
                     IsInScorecard = matchingAnnuity.IsInScorecard ?? matchingAnnuity.IsInScoring ?? false,
                     Name = matchingAnnuity.Name,
-                    OrganizationTokens = matchingAnnuity.OrganizationTokens
+                    OrganizationTokens = matchingAnnuity.OrganizationTokens,
+                    Eligibility = eligibility
                 },
                 CategoryId = "indexed",
                 Company = matchingCompany,
@@ -430,9 +477,9 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 },
                 VarId = genericRate.VarId
             });
-        }
+        });
 
-        return retVal;
+        return [.. retVal];
     }
     
     private async Task<List<ProductRate>> PopulateRilaRates(List<BeaconGenericRate> genericRates)
