@@ -128,6 +128,9 @@ public class ProductRate
 
     [FirestoreProperty("symbol")]
     public string? Symbol { get; set; }
+        
+    [FirestoreProperty("schedId")]
+    public long? SchedId { get; set; }
 
     public int? VarId { get; set; }
 }

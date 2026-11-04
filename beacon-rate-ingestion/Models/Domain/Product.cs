@@ -23,7 +23,7 @@ public class Product
     [FirestoreProperty("_organizationTokens")]
     public List<string> OrganizationTokens { get; set; } = [];
     
-    [FirestoreProperty("eligibiity")]
+    [FirestoreProperty("eligibility")]
     public Eligibility? Eligibility { get; set; }
 }
 
@@ -32,9 +32,6 @@ public class Eligibility
 {
     [FirestoreProperty("ages")]
     public AgeBase? Ages { get; set; }
-    
-    [FirestoreProperty("schedId")]
-    public long? SchedId { get; set; }
 }
 
 [FirestoreData]

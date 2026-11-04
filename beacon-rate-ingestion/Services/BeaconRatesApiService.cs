@@ -209,7 +209,12 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 return;
             }
 
-            _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", Interlocked.Increment(ref counter), genericRates.Count, genericRate.ProductId);
+            Interlocked.Increment(ref counter);
+            if (counter % 100 == 0)
+            {
+                _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", counter, genericRates.Count, genericRate.ProductId);
+            }
+
             string productId = $"fa_{genericRate.ProductId}";
             Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
             if (matchingAnnuity is null)
@@ -239,7 +244,6 @@ public class BeaconRatesApiService : IBeaconRatesApiService
             Eligibility eligibility = new()
             {
                 Ages = _ageBases[productId],
-                SchedId = _surrenders[productId].ScheduleId
             };
 
             retVal.Add(new ProductRate()
@@ -247,6 +251,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 Id = genericRate.Urn,
                 ProductId = productId,
                 ProductName = genericRate.ProductName,
+                SchedId = _surrenders[productId].ScheduleId,
                 Product = new Product
                 {
                     IsActive = matchingAnnuity.IsActive,
@@ -352,7 +357,12 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 return;
             }
 
-            _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", Interlocked.Increment(ref counter), genericRates.Count, genericRate.ProductId);
+            Interlocked.Increment(ref counter);
+            if (counter % 100 == 0)
+            {
+                _logger.LogInformation("Processing {Counter}/{RateCount} for product {ProductId}", counter, genericRates.Count, genericRate.ProductId);
+            }
+
             string productId = $"ia_{genericRate.ProductId}";
             Annuity? matchingAnnuity = annuities.FirstOrDefault(z => z.Id == productId);
             if (matchingAnnuity is null)
@@ -381,8 +391,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
 
             Eligibility eligibility = new()
             {
-                Ages = _ageBases[productId],
-                SchedId = _surrenders[productId]?.ScheduleId
+                Ages = _ageBases[productId]
             };
             
             (string IndexId, string IndexName, string IndexSymbol) marketIndex = await GetOrCreateMarketIndexId(genericRate.Index, genericRate.TickerSymbol);
@@ -393,6 +402,7 @@ public class BeaconRatesApiService : IBeaconRatesApiService
                 Id = genericRate.Urn,
                 ProductId = $"ia_{genericRate.ProductId}",
                 ProductName = genericRate.ProductName,
+                SchedId = _surrenders[productId]?.ScheduleId,
                 Product = new Product
                 {
                     IsActive = matchingAnnuity.IsActive,
